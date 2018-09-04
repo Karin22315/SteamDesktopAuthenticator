@@ -30,6 +30,7 @@ namespace Steam_Desktop_Authenticator
 
             CefSettings settings = new CefSettings();
             settings.PersistSessionCookies = false;
+            settings.Locale = "en-US";
             settings.UserAgent = "Mozilla/5.0 (Linux; Android 6.0; Nexus 6P Build/XXXXX; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/47.0.2526.68 Mobile Safari/537.36";
             steamCookies = String.Format("mobileClientVersion=0 (2.1.3); mobileClient=android; steamid={0}; steamLogin={1}; steamLoginSecure={2}; Steam_Language=english; dob=;", steamAccount.Session.SteamID.ToString(), steamAccount.Session.SteamLogin, steamAccount.Session.SteamLoginSecure);
 
@@ -75,7 +76,14 @@ namespace Steam_Desktop_Authenticator
                         success('{2}');
                     }}
                 }}", steamAccount.GenerateConfirmationQueryParams("allow"), steamAccount.GenerateConfirmationQueryParams("cancel"), urlParams);
-                browser.ExecuteScriptAsync(script);
+                try
+                {
+                    browser.ExecuteScriptAsync(script);
+                }
+                catch (Exception)
+                {
+                    Debug.WriteLine("Failed to execute script");
+                }
             }
         }
 
@@ -110,5 +118,4 @@ namespace Steam_Desktop_Authenticator
             return bHandled;
         }
     }
-    
 }

@@ -22,6 +22,7 @@ namespace Steam_Desktop_Authenticator
         private long steamTime = 0;
         private long currentSteamChunk = 0;
         private string passKey = null;
+        private bool startSilent = false;
 
         // Forms
         private TradePopupForm popupFrm = new TradePopupForm();
@@ -31,12 +32,30 @@ namespace Steam_Desktop_Authenticator
             InitializeComponent();
         }
 
+        public void SetEncryptionKey(string key)
+        {
+            passKey = key;
+        }
+
+        public void StartSilent(bool silent)
+        {
+            startSilent = silent;
+        }
+
         // Form event handlers
 
         private void MainForm_Shown(object sender, EventArgs e)
         {
             this.labelVersion.Text = String.Format("v{0}", Application.ProductVersion);
-            this.manifest = Manifest.GetManifest();
+            try
+            {
+                this.manifest = Manifest.GetManifest();
+            }
+            catch (ManifestParseException)
+            {
+                MessageBox.Show("Unable to read your settings. Try restating SDA.", "Steam Desktop Authenticator", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                this.Close();
+            }
 
             // Make sure we don't show that welcome dialog again
             this.manifest.FirstRun = false;
@@ -47,10 +66,13 @@ namespace Steam_Desktop_Authenticator
 
             if (manifest.Encrypted)
             {
-                passKey = manifest.PromptForPassKey();
                 if (passKey == null)
                 {
-                    Application.Exit();
+                    passKey = manifest.PromptForPassKey();
+                    if (passKey == null)
+                    {
+                        Application.Exit();
+                    }
                 }
 
                 btnManageEncryption.Text = "Manage Encryption";
@@ -66,6 +88,11 @@ namespace Steam_Desktop_Authenticator
             loadAccountsList();
 
             checkForUpdates();
+
+            if (startSilent)
+            {
+                this.WindowState = FormWindowState.Minimized;
+            }
         }
 
         private void MainForm_Load(object sender, EventArgs e)
@@ -196,7 +223,7 @@ namespace Steam_Desktop_Authenticator
 
         private void btnCopy_Click(object sender, EventArgs e)
         {
-            Clipboard.SetText(txtLoginToken.Text);
+            CopyLoginToken();
         }
 
 
@@ -360,6 +387,10 @@ namespace Steam_Desktop_Authenticator
         {
             for (int i = 0; i < allAccounts.Length; i++)
             {
+                // Check if index is out of bounds first
+                if (i < 0 || listAccounts.SelectedIndex < 0)
+                    continue;
+
                 SteamGuardAccount account = allAccounts[i];
                 if (account.AccountName == (string)listAccounts.Items[listAccounts.SelectedIndex])
                 {
@@ -465,7 +496,7 @@ namespace Steam_Desktop_Authenticator
                 }
                 if (autoAcceptConfirmations.Count > 0)
                 {
-                    foreach(var acc in autoAcceptConfirmations.Keys)
+                    foreach (var acc in autoAcceptConfirmations.Keys)
                     {
                         var confirmations = autoAcceptConfirmations[acc].ToArray();
                         acc.AcceptMultipleConfirmations(confirmations);
@@ -481,6 +512,14 @@ namespace Steam_Desktop_Authenticator
         }
 
         // Other methods
+
+        private void CopyLoginToken()
+        {
+            string text = txtLoginToken.Text;
+            if (String.IsNullOrEmpty(text))
+                return;
+            Clipboard.SetText(text);
+        }
 
         /// <summary>
         /// Refresh this account's session data using their OAuth Token
@@ -683,6 +722,14 @@ namespace Steam_Desktop_Authenticator
             catch (Exception)
             {
                 MessageBox.Show("Failed to check for updates.");
+            }
+        }
+
+        private void MainForm_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.C && e.Modifiers == Keys.Control)
+            {
+                CopyLoginToken();
             }
         }
     }
